@@ -1,0 +1,88 @@
+{
+  "results": [
+    {
+      "model": "Naive (24h ago)",
+      "mape": 5.12,
+      "rmse": 248.3,
+      "mae": 152.0,
+      "r2": 0.9195,
+      "mape_peak_hours": 3.67,
+      "mape_heatwave": 4.82,
+      "mape_outlier_days": 3.3
+    },
+    {
+      "model": "Naive (168h ago)",
+      "mape": 8.11,
+      "rmse": 352.4,
+      "mae": 241.8,
+      "r2": 0.8378,
+      "mape_peak_hours": 5.76,
+      "mape_heatwave": 6.78,
+      "mape_outlier_days": 4.79
+    },
+    {
+      "model": "Linear Regression",
+      "mape": 4.8,
+      "rmse": 200.4,
+      "mae": 133.8,
+      "r2": 0.9476,
+      "mape_peak_hours": 3.15,
+      "mape_heatwave": 3.16,
+      "mape_outlier_days": 2.54
+    },
+    {
+      "model": "Ridge Regression",
+      "mape": 4.79,
+      "rmse": 200.1,
+      "mae": 133.5,
+      "r2": 0.9477,
+      "mape_peak_hours": 3.12,
+      "mape_heatwave": 3.12,
+      "mape_outlier_days": 2.53
+    },
+    {
+      "model": "Random Forest",
+      "mape": 3.48,
+      "rmse": 175.8,
+      "mae": 102.6,
+      "r2": 0.9596,
+      "mape_peak_hours": 4.8,
+      "mape_heatwave": 4.03,
+      "mape_outlier_days": 4.68
+    },
+    {
+      "model": "XGBoost",
+      "mape": 3.2,
+      "rmse": 156.1,
+      "mae": 94.9,
+      "r2": 0.9682,
+      "mape_peak_hours": 5.19,
+      "mape_heatwave": 4.12,
+      "mape_outlier_days": 4.91
+    },
+    {
+      "model": "Neural Network (MLP)",
+      "mape": 3.3,
+      "rmse": 149.1,
+      "mae": 94.3,
+      "r2": 0.971,
+      "mape_peak_hours": 3.05,
+      "mape_heatwave": 3.19,
+      "mape_outlier_days": 2.46
+    },
+    {
+      "model": "XGBoost (relative)",
+      "mape": 2.84,
+      "rmse": 136.3,
+      "mae": 80.5,
+      "r2": 0.9757,
+      "mape_peak_hours": 2.47,
+      "mape_heatwave": 2.29,
+      "mape_outlier_days": 2.56
+    }
+  ],
+  "best_model": "XGBoost (relative)",
+  "split_date": "2012-03-11",
+  "n_train": 16944,
+  "n_test": 8755
+}

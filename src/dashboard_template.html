@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DILLI·GRID — Delhi Load Forecast Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#07090F; --panel:#0C111E; --panel2:#101729; --line:#1B2438; --line2:#27314D;
+  --amber:#FFB454; --amber-dim:#8a6630; --cyan:#4FD8EB; --cyan-dim:#2a6b75;
+  --coral:#FF6A5E; --green:#7BE0AD;
+  --ink:#E9EDF6; --mut:#8C96AE; --mut2:#5B6680;
+  --disp:'Unbounded','Space Grotesk',system-ui,sans-serif;
+  --body:'Space Grotesk',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;
+  background-image:radial-gradient(1200px 500px at 70% -10%, rgba(79,216,235,.05), transparent 60%),
+                   radial-gradient(900px 420px at 10% 0%, rgba(255,180,84,.05), transparent 55%);}
+a{color:var(--cyan);text-decoration:none}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+
+/* ---------- telemetry ticker ---------- */
+.ticker{border-bottom:1px solid var(--line);background:rgba(12,17,30,.85);backdrop-filter:blur(6px);
+  position:sticky;top:0;z-index:50;overflow:hidden;white-space:nowrap}
+.ticker-inner{display:inline-block;padding:7px 0;font-family:var(--mono);font-size:11.5px;color:var(--mut);
+  animation:tick 38s linear infinite}
+.ticker-inner b{color:var(--amber);font-weight:500}
+.ticker-inner i{color:var(--cyan);font-style:normal}
+.ticker-inner span{margin:0 26px}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion: reduce){.ticker-inner{animation:none}}
+
+/* ---------- hero ---------- */
+header{padding:54px 0 0}
+.crumb{font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:var(--mut2);text-transform:uppercase}
+.crumb b{color:var(--amber);font-weight:500}
+h1{font-family:var(--disp);font-weight:800;font-size:clamp(30px,5.2vw,56px);letter-spacing:-.01em;
+  margin:14px 0 10px;line-height:1.06}
+h1 .gl{color:var(--amber);text-shadow:0 0 26px rgba(255,180,84,.45)}
+.sub{max-width:640px;color:var(--mut);font-size:16px}
+.scope-box{margin-top:30px;border:1px solid var(--line);border-radius:10px;background:linear-gradient(180deg,#0B101D, #080C16);
+  box-shadow:inset 0 0 60px rgba(79,216,235,.03);position:relative;overflow:hidden}
+.scope-head{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:11px;color:var(--mut2);letter-spacing:.14em;text-transform:uppercase}
+.scope-head .live{color:var(--amber)}
+.scope-head .live::before{content:"●";margin-right:7px;animation:blink 1.6s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+#scope{width:100%;height:230px;display:block}
+
+/* ---------- generic sections ---------- */
+section{padding:64px 0 8px}
+.eyebrow{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:11.5px;
+  letter-spacing:.24em;text-transform:uppercase;color:var(--amber)}
+.eyebrow::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--amber-dim),transparent)}
+.eyebrow::before{content:"";width:8px;height:8px;border:1.5px solid var(--amber);border-radius:50%}
+h2{font-family:var(--disp);font-weight:600;font-size:clamp(20px,2.6vw,28px);margin:14px 0 6px}
+.lead{color:var(--mut);max-width:720px;margin-bottom:26px}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
+.panel h3{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--mut);margin-bottom:14px}
+
+/* ---------- KPI strip ---------- */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:34px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;position:relative}
+.kpi::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:2px;background:var(--amber);opacity:.7}
+.kpi.c::before{background:var(--cyan)}
+.kpi .v{font-family:var(--mono);font-size:26px;font-weight:600;letter-spacing:-.02em}
+.kpi .v small{font-size:13px;color:var(--mut);font-weight:400;margin-left:4px}
+.kpi .l{font-size:12.5px;color:var(--mut);margin-top:2px}
+
+/* ---------- explorer ---------- */
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.pill{font-family:var(--mono);font-size:12px;padding:6px 14px;border:1px solid var(--line2);
+  border-radius:999px;background:transparent;color:var(--mut);cursor:pointer;transition:.15s}
+.pill:hover{color:var(--ink);border-color:var(--mut2)}
+.pill.on{background:var(--amber);border-color:var(--amber);color:#100B02;font-weight:600}
+.pill.cy.on{background:var(--cyan);border-color:var(--cyan)}
+.tool-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.navbtn{width:30px;height:30px;border-radius:7px;border:1px solid var(--line2);background:transparent;
+  color:var(--mut);cursor:pointer;font-size:14px}
+.navbtn:hover{color:var(--ink);border-color:var(--mut2)}
+.range-label{font-family:var(--mono);font-size:11.5px;color:var(--mut2)}
+.chartbox{position:relative;height:360px}
+.legend{display:flex;gap:22px;margin-top:12px;font-family:var(--mono);font-size:11.5px;color:var(--mut)}
+.legend i{display:inline-block;width:18px;height:3px;border-radius:2px;margin-right:7px;vertical-align:middle}
+
+/* ---------- model arena ---------- */
+.arena{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:760px}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut2);
+  text-align:left;padding:10px 12px;border-bottom:1px solid var(--line2)}
+td{padding:11px 12px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:12.5px;color:var(--mut)}
+td.mname{font-family:var(--body);font-size:14px;color:var(--ink);white-space:nowrap}
+tr.winner td{background:rgba(255,180,84,.05)}
+tr.winner td.mname::after{content:"DEPLOYED";font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;
+  color:#100B02;background:var(--amber);border-radius:4px;padding:2.5px 7px;margin-left:10px;vertical-align:1px}
+.metric-cell{min-width:120px}
+.bar{height:5px;border-radius:3px;background:var(--line);margin-top:5px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--cyan)}
+tr.winner .bar i{background:var(--amber)}
+tr.naive td.mname{color:var(--mut)}
+
+/* ---------- diagnostics + drivers grids ---------- */
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.grid2{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}
+.cbox{position:relative;height:240px}
+
+/* ---------- forecast lab ---------- */
+.lab{display:grid;grid-template-columns:380px 1fr;gap:14px;align-items:stretch}
+.lab-controls{display:flex;flex-direction:column;gap:18px}
+.field label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:8px}
+.field label output{color:var(--amber);font-weight:600;letter-spacing:0;font-size:12.5px}
+input[type=date]{width:100%;background:var(--panel2);border:1px solid var(--line2);border-radius:8px;
+  color:var(--ink);font-family:var(--mono);font-size:14px;padding:10px 12px;color-scheme:dark}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;
+  background:linear-gradient(90deg,var(--amber) var(--fill,50%),var(--line) var(--fill,50%));outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  background:var(--amber);border:3px solid #100B02;box-shadow:0 0 0 1.5px var(--amber);cursor:pointer}
+input[type=range].cy{background:linear-gradient(90deg,var(--cyan) var(--fill,50%),var(--line) var(--fill,50%))}
+input[type=range].cy::-webkit-slider-thumb{background:var(--cyan);box-shadow:0 0 0 1.5px var(--cyan)}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;padding:4px 10px;border-radius:5px;
+  border:1px solid var(--line2);color:var(--mut2)}
+.badge.on{border-color:var(--coral);color:var(--coral)}
+.reset{font-family:var(--mono);font-size:11px;color:var(--mut2);background:none;border:none;cursor:pointer;
+  text-decoration:underline dotted;align-self:flex-start}
+.reset:hover{color:var(--cyan)}
+.readout{display:flex;flex-direction:column;gap:6px;padding:22px;border-radius:10px;
+  background:linear-gradient(180deg,#0C1322,#090E1A);border:1px solid var(--line)}
+.readout .big{font-family:var(--mono);font-weight:600;font-size:clamp(40px,5vw,58px);letter-spacing:-.03em;
+  color:var(--amber);text-shadow:0 0 32px rgba(255,180,84,.35)}
+.readout .big small{font-size:18px;color:var(--mut);font-weight:400}
+.readout .ctx{font-size:13px;color:var(--mut)}
+.readout .ctx b{color:var(--cyan);font-weight:500}
+.daybox{position:relative;height:190px;margin-top:8px}
+.labnote{font-size:12px;color:var(--mut2);margin-top:14px;line-height:1.6}
+
+/* ---------- footer ---------- */
+footer{margin-top:80px;border-top:1px solid var(--line);padding:34px 0 50px;color:var(--mut2);font-size:13px}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0 26px}
+.step{border:1px solid var(--line);border-radius:9px;padding:14px;background:var(--panel)}
+.step b{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;color:var(--amber);margin-bottom:6px}
+
+@media(max-width:900px){
+  .kpis{grid-template-columns:1fr 1fr}
+  .grid3{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
+  .lab{grid-template-columns:1fr}
+  .steps{grid-template-columns:1fr 1fr}
+}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+</style>
+</head>
+<body>
+
+<div class="ticker"><div class="ticker-inner" id="ticker"></div></div>
+
+<header class="wrap">
+  <div class="crumb"><b>DILLI·GRID</b> / STATE LOAD DISPATCH · FORECAST CONSOLE</div>
+  <h1>Delhi electricity demand,<br>forecast to <span class="gl" id="heroMape">±—%</span></h1>
+  <p class="sub">An end-to-end machine-learning pipeline trained on three years of 15-minute SLDC
+  telemetry and hourly weather — benchmarked across seven models, stress-tested on heatwaves,
+  record peaks and outlier days, and deployed right here in your browser.</p>
+
+  <div class="scope-box">
+    <div class="scope-head">
+      <span class="live">CH-1 SYSTEM LOAD · MW</span>
+      <span id="scopeRange">—</span>
+    </div>
+    <canvas id="scope"></canvas>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+</header>
+
+<main class="wrap">
+
+<section id="explorer">
+  <div class="eyebrow">01 · Actual vs Predicted</div>
+  <h2>The forecast, hour by hour</h2>
+  <p class="lead">One full unseen year — September is not the same as June, and the model never saw
+  2012's record summer during training. Amber is what Delhi actually drew; cyan is what the model said it would.</p>
+  <div class="panel">
+    <div class="toolbar">
+      <button class="pill" data-d="7">7 days</button>
+      <button class="pill on" data-d="30">30 days</button>
+      <button class="pill" data-d="90">90 days</button>
+      <button class="pill" data-d="0">Full year</button>
+      <button class="pill cy" id="tempToggle">+ temperature</button>
+      <div class="tool-right">
+        <button class="navbtn" id="navPrev" aria-label="Earlier">‹</button>
+        <span class="range-label" id="rangeLabel"></span>
+        <button class="navbtn" id="navNext" aria-label="Later">›</button>
+      </div>
+    </div>
+    <div class="chartbox"><canvas id="mainChart"></canvas></div>
+    <div class="legend">
+      <span><i style="background:var(--amber)"></i>ACTUAL LOAD</span>
+      <span><i style="background:var(--cyan)"></i>MODEL FORECAST</span>
+      <span id="legTemp" style="display:none"><i style="background:var(--coral)"></i>TEMPERATURE °C</span>
+    </div>
+  </div>
+</section>
+
+<section id="arena">
+  <div class="eyebrow">02 · Model Arena</div>
+  <h2>Seven models. Four stress conditions. One survivor.</h2>
+  <p class="lead">Every candidate was scored not just on average accuracy, but on the hours that hurt:
+  the top-5% peak load hours, 40&nbsp;°C+ heatwave hours, and statistically abnormal days. Plain
+  gradient-boosted trees crumble on record peaks (trees can't extrapolate) — predicting load
+  <em>relative to its recent level</em> fixes that.</p>
+  <div class="panel arena">
+    <table id="arenaTable"></table>
+  </div>
+</section>
+
+<section id="diag">
+  <div class="eyebrow">03 · Diagnostics</div>
+  <h2>Where the error lives</h2>
+  <p class="lead">A good forecaster's errors are small, centred on zero, and stable across seasons.</p>
+  <div class="grid3">
+    <div class="panel"><h3>Error distribution · % of actual</h3><div class="cbox"><canvas id="histChart"></canvas></div></div>
+    <div class="panel"><h3>MAPE by month</h3><div class="cbox"><canvas id="monthChart"></canvas></div></div>
+    <div class="panel"><h3>Predicted vs actual · MW</h3><div class="cbox"><canvas id="scatterChart"></canvas></div></div>
+  </div>
+</section>
+
+<section id="drivers">
+  <div class="eyebrow">04 · What Drives Delhi's Load</div>
+  <h2>Yesterday's load, and the weather</h2>
+  <p class="lead">Feature importance from the winning model, and the signature U-curve every Indian
+  grid engineer knows: demand climbs steeply once temperatures pass ~24&nbsp;°C and air-conditioning takes over.</p>
+  <div class="grid2">
+    <div class="panel"><h3>Feature importance · winning model</h3><div class="cbox" style="height:300px"><canvas id="impChart"></canvas></div></div>
+    <div class="panel"><h3>Mean load vs temperature · 3 years</h3><div class="cbox" style="height:300px"><canvas id="tempChart"></canvas></div></div>
+  </div>
+</section>
+
+<section id="lab">
+  <div class="eyebrow">05 · Forecast Lab</div>
+  <h2>Forecast any date &amp; time — live, in your browser</h2>
+  <p class="lead">A 220-tree gradient-boosted model (exported from Python, running in JavaScript)
+  predicts from calendar + weather alone. Weather pre-fills from Delhi's climatology for your chosen
+  hour — drag the sliders to play what-if scenarios like a heatwave or a cool monsoon evening.</p>
+  <div class="lab">
+    <div class="panel lab-controls">
+      <div class="field">
+        <label>Date <output id="dowOut"></output></label>
+        <input type="date" id="fDate">
+      </div>
+      <div class="field">
+        <label>Hour of day <output id="hourOut">19:00</output></label>
+        <input type="range" id="fHour" min="0" max="23" step="1" value="19">
+      </div>
+      <div class="field">
+        <label>Temperature <output id="tempOut">— °C</output></label>
+        <input type="range" id="fTemp" min="2" max="48" step="0.5">
+      </div>
+      <div class="field">
+        <label>Humidity <output id="humOut">— %</output></label>
+        <input type="range" class="cy" id="fHum" min="5" max="100" step="1">
+      </div>
+      <div class="field">
+        <label>Demand growth since 2012 <output id="growOut">3.6 %/yr</output></label>
+        <input type="range" id="fGrow" min="0" max="6" step="0.2" value="3.6">
+      </div>
+      <div class="badges">
+        <span class="badge" id="bWknd">WEEKEND</span>
+        <span class="badge" id="bHol">PUBLIC HOLIDAY</span>
+      </div>
+      <button class="reset" id="resetWx">↺ reset weather to Delhi climatology</button>
+    </div>
+    <div class="readout">
+      <div style="font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--mut2)">PREDICTED SYSTEM LOAD</div>
+      <div class="big"><span id="fOut">—</span><small> MW</small></div>
+      <div class="ctx" id="fCtx"></div>
+      <div class="daybox"><canvas id="dayChart"></canvas></div>
+      <div class="labnote">Model holdout error ≈ ±5% without load history. Trained on Delhi 2010–2013;
+      the growth slider scales output to your chosen year (Delhi's peak demand has grown ~3.6%/yr since).
+      For grid-scale decisions, always pair with the full lag-feature model served from the API.</div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="eyebrow" style="color:var(--mut)">The Pipeline</div>
+    <div class="steps">
+      <div class="step"><b>STEP 1 · DATA</b>Delhi SLDC 15-min load (2010–13) + hourly Safdarjung weather, cleaned &amp; merged to 25,867 hourly rows.</div>
+      <div class="step"><b>STEP 2 · MODELS</b>7 models benchmarked chronologically on one unseen year, incl. peak / heatwave / outlier-day subsets.</div>
+      <div class="step"><b>STEP 3 · EXPORT</b>Winning approach retrained on calendar+weather and exported as JSON trees for the browser.</div>
+      <div class="step"><b>STEP 4 · CONSOLE</b>This page — a single self-contained HTML file. Also servable via the included FastAPI app.</div>
+    </div>
+    Data: Delhi State Load Dispatch Centre (via Ecohen4/Delhi) · Weather Underground Delhi archive ·
+    Built with scikit-learn, XGBoost &amp; Chart.js.
+  </div>
+</footer>
+
+<script>
+/*__DATA__*/
+/*__MODEL__*/
+
+/* ============ helpers ============ */
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString('en-IN', {maximumFractionDigits:0});
+const MONO = "'IBM Plex Mono', monospace";
+Chart.defaults.font.family = MONO;
+Chart.defaults.font.size = 10.5;
+Chart.defaults.color = '#5B6680';
+Chart.defaults.borderColor = '#1B2438';
+
+const H = DATA.hourly;
+const start = new Date(H.start);
+const ts = H.offsets.map(o => new Date(start.getTime() + o*3600e3));
+const N = ts.length;
+const best = DATA.metrics.results.find(r => r.model === DATA.metrics.best_model);
+const holidaySet = new Set(DATA.holidays);
+
+/* ============ ticker ============ */
+(function(){
+  const peak = Math.max(...H.actual);
+  const peakIdx = H.actual.indexOf(peak);
+  const items = [
+    `SYSTEM PEAK <b>${fmt(peak)} MW</b> @ ${ts[peakIdx].toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}`,
+    `TEST WINDOW <i>${ts[0].toLocaleDateString('en-IN',{month:'short',year:'numeric'})} → ${ts[N-1].toLocaleDateString('en-IN',{month:'short',year:'numeric'})}</i>`,
+    `DEPLOYED MODEL <b>${DATA.metrics.best_model.toUpperCase()}</b>`,
+    `MAPE <i>${best.mape}%</i> · PEAK-HOURS <i>${best.mape_peak_hours}%</i> · HEATWAVE <i>${best.mape_heatwave}%</i>`,
+    `R² <b>${best.r2}</b>`,
+    `TRAIN ${fmt(DATA.metrics.n_train)} HRS · TEST ${fmt(DATA.metrics.n_test)} HRS`,
+    `DISCOMS BRPL · BYPL · NDPL · NDMC · MES`,
+  ];
+  const s = items.map(t=>`<span>${t}</span>`).join('·');
+  $('ticker').innerHTML = s + '·' + s; // duplicate for seamless loop
+})();
+
+/* ============ hero numbers + KPIs ============ */
+$('heroMape').textContent = `±${best.mape}%`;
+(function(){
+  const peak = Math.max(...H.actual);
+  const kpis = [
+    {v:best.mape+'%', l:'Mean abs. % error · full unseen year', c:0},
+    {v:best.mape_peak_hours+'%', l:'Error on top-5% peak-load hours', c:0},
+    {v:best.mape_heatwave+'%', l:'Error during 40°C+ heatwave hours', c:1},
+    {v:fmt(peak)+'<small>MW</small>', l:'Highest demand correctly tracked', c:1},
+  ];
+  $('kpis').innerHTML = kpis.map(k =>
+    `<div class="kpi ${k.c?'c':''}"><div class="v">${k.v}</div><div class="l">${k.l}</div></div>`).join('');
+})();
+
+/* ============ oscilloscope hero ============ */
+(function(){
+  const cv = $('scope'), ctx = cv.getContext('2d');
+  const days = 14, n = days*24;
+  const a = H.actual.slice(-n);
+  $('scopeRange').textContent =
+    ts[N-n].toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) + ' — ' +
+    ts[N-1].toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) + ' · LAST 14 DAYS';
+  const lo = Math.min(...a)*0.96, hi = Math.max(...a)*1.04;
+  let W, Hh, dpr = window.devicePixelRatio||1;
+  function size(){
+    W = cv.clientWidth; Hh = cv.clientHeight = 230;
+    cv.width = W*dpr; cv.height = Hh*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  const X = i => i/(n-1)*W, Y = v => Hh - (v-lo)/(hi-lo)*(Hh-26) - 13;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let prog = reduced ? 1 : 0;
+  function draw(){
+    ctx.clearRect(0,0,W,Hh);
+    // graticule
+    ctx.strokeStyle = 'rgba(79,216,235,.07)'; ctx.lineWidth = 1;
+    for(let d=0; d<=days; d++){ const x=d/days*W;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,Hh); ctx.stroke(); }
+    for(let g=1; g<5; g++){ const y=g/5*Hh;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+    // trace with phosphor glow
+    const m = Math.floor(prog*n);
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,180,84,.8)'; ctx.shadowBlur = 12;
+    ctx.strokeStyle = '#FFB454'; ctx.lineWidth = 1.7; ctx.beginPath();
+    for(let i=0;i<m;i++){ const x=X(i), y=Y(a[i]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+    ctx.stroke(); ctx.restore();
+    // sweep dot
+    if(m>0 && m<n){
+      const x=X(m-1), y=Y(a[m-1]);
+      ctx.fillStyle='#FFE3B3'; ctx.shadowColor='#FFB454'; ctx.shadowBlur=18;
+      ctx.beginPath(); ctx.arc(x,y,3.2,0,7); ctx.fill(); ctx.shadowBlur=0;
+    }
+    if(prog<1){ prog=Math.min(1,prog+0.012); requestAnimationFrame(draw); }
+  }
+  size(); draw();
+  addEventListener('resize', ()=>{ size(); prog=1; draw(); });
+})();
+
+/* ============ explorer chart ============ */
+let winDays = 30, winEnd = N, showTemp = false, mainChart;
+function windowData(){
+  const len = winDays===0 ? N : winDays*24;
+  const s = Math.max(0, (winDays===0?N:winEnd) - len), e = winDays===0 ? N : winEnd;
+  // downsample long windows for crisp rendering
+  const step = Math.max(1, Math.floor((e-s)/1100));
+  const lab=[], A=[], P=[], T=[];
+  for(let i=s;i<e;i+=step){ lab.push(ts[i]); A.push(H.actual[i]); P.push(H.predicted[i]); T.push(H.temp[i]); }
+  return {lab,A,P,T,s,e};
+}
+function fmtRange(s,e){
+  const o={day:'2-digit',month:'short',year:'2-digit'};
+  return ts[s].toLocaleDateString('en-IN',o)+' – '+ts[e-1].toLocaleDateString('en-IN',o);
+}
+function renderMain(){
+  const {lab,A,P,T,s,e} = windowData();
+  $('rangeLabel').textContent = fmtRange(s,e);
+  const dsets = [
+    {label:'Actual', data:A, borderColor:'#FFB454', backgroundColor:'rgba(255,180,84,.06)',
+     borderWidth:1.6, pointRadius:0, fill:true, tension:.25, yAxisID:'y'},
+    {label:'Forecast', data:P, borderColor:'#4FD8EB', borderWidth:1.4, borderDash:[5,3],
+     pointRadius:0, tension:.25, yAxisID:'y'},
+  ];
+  if(showTemp) dsets.push({label:'Temp °C', data:T, borderColor:'#FF6A5E',
+     borderWidth:1, pointRadius:0, tension:.3, yAxisID:'y2'});
+  const cfg = {
+    type:'line',
+    data:{labels:lab, datasets:dsets},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:{duration:280},
+      interaction:{mode:'index', intersect:false},
+      plugins:{legend:{display:false},
+        tooltip:{backgroundColor:'#0C111E', borderColor:'#27314D', borderWidth:1,
+          titleFont:{family:MONO,size:11}, bodyFont:{family:MONO,size:11}, padding:10,
+          callbacks:{title:i=>i[0].label && new Date(lab[i[0].dataIndex]).toLocaleString('en-IN',
+            {weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}),
+            label:c=>` ${c.dataset.label}: ${fmt(c.parsed.y)}${c.dataset.yAxisID==='y2'?' °C':' MW'}`}}},
+      scales:{
+        x:{type:'category', ticks:{maxTicksLimit:9, callback:function(v){
+            const d=lab[v]; return d? d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'';},
+          maxRotation:0}, grid:{display:false}},
+        y:{title:{display:true,text:'MW',font:{family:MONO,size:10}}, grid:{color:'#141B2D'}},
+        y2:{display:showTemp, position:'right', grid:{display:false},
+            title:{display:showTemp,text:'°C',font:{family:MONO,size:10}}}
+      }
+    }};
+  if(mainChart){ mainChart.destroy(); }
+  mainChart = new Chart($('mainChart'), cfg);
+}
+document.querySelectorAll('.pill[data-d]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.pill[data-d]').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); winDays=+b.dataset.d; winEnd=N; renderMain();
+});
+$('tempToggle').onclick=()=>{ showTemp=!showTemp;
+  $('tempToggle').classList.toggle('on',showTemp);
+  $('legTemp').style.display=showTemp?'':'none'; renderMain(); };
+$('navPrev').onclick=()=>{ if(winDays===0)return; winEnd=Math.max(winDays*24, winEnd-winDays*24); renderMain(); };
+$('navNext').onclick=()=>{ if(winDays===0)return; winEnd=Math.min(N, winEnd+winDays*24); renderMain(); };
+renderMain();
+
+/* ============ model arena ============ */
+(function(){
+  const cols = [["mape","MAPE · full year"],["mape_peak_hours","Peak hours"],
+                ["mape_heatwave","Heatwave 40°C+"],["mape_outlier_days","Outlier days"]];
+  const rs = DATA.metrics.results;
+  const maxv = {}; cols.forEach(([k])=> maxv[k]=Math.max(...rs.map(r=>r[k]||0)));
+  let html = '<thead><tr><th>Model</th>' + cols.map(c=>`<th>${c[1]}</th>`).join('') + '<th>R²</th></tr></thead><tbody>';
+  rs.slice().sort((a,b)=>a.mape-b.mape).forEach(r=>{
+    const win = r.model===DATA.metrics.best_model, naive=r.model.startsWith('Naive');
+    html += `<tr class="${win?'winner':''} ${naive?'naive':''}"><td class="mname">${r.model}</td>`;
+    cols.forEach(([k])=>{
+      const v=r[k];
+      html += `<td class="metric-cell">${v==null?'—':v+'%'}<div class="bar"><i style="width:${v?Math.max(4,v/maxv[k]*100):0}%"></i></div></td>`;
+    });
+    html += `<td>${r.r2}</td></tr>`;
+  });
+  $('arenaTable').innerHTML = html + '</tbody>';
+})();
+
+/* ============ diagnostics ============ */
+new Chart($('histChart'), {type:'bar',
+  data:{labels:DATA.histogram.bins.map(b=>b+'%'),
+    datasets:[{data:DATA.histogram.counts,
+      backgroundColor:DATA.histogram.bins.map(b=> (b>=-1&&b<1)?'#FFB454':'rgba(79,216,235,.45)'),
+      borderRadius:2}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+    tooltip:{callbacks:{label:c=>` ${fmt(c.parsed.y)} hours`}}},
+    scales:{x:{ticks:{maxTicksLimit:9,maxRotation:0},grid:{display:false}},
+            y:{grid:{color:'#141B2D'},title:{display:true,text:'hours',font:{family:MONO,size:10}}}}}});
+
+new Chart($('monthChart'), {type:'bar',
+  data:{labels:DATA.monthly_mape.labels,
+    datasets:[{data:DATA.monthly_mape.values, backgroundColor:'rgba(255,180,84,.7)', borderRadius:2}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+    tooltip:{callbacks:{label:c=>` MAPE ${c.parsed.y}%`}}},
+    scales:{x:{ticks:{maxRotation:0,maxTicksLimit:7},grid:{display:false}},
+            y:{grid:{color:'#141B2D'},title:{display:true,text:'%',font:{family:MONO,size:10}}}}}});
+
+(function(){
+  const pts=[]; for(let i=0;i<N;i+=8) pts.push({x:H.actual[i], y:H.predicted[i]});
+  const lo=Math.min(...H.actual), hi=Math.max(...H.actual);
+  new Chart($('scatterChart'), {type:'scatter',
+    data:{datasets:[
+      {data:pts, pointRadius:1.6, pointBackgroundColor:'rgba(79,216,235,.4)'},
+      {type:'line', data:[{x:lo,y:lo},{x:hi,y:hi}], borderColor:'#FF6A5E',
+       borderWidth:1, borderDash:[4,4], pointRadius:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},
+      scales:{x:{title:{display:true,text:'actual MW',font:{family:MONO,size:10}},grid:{color:'#141B2D'}},
+              y:{title:{display:true,text:'predicted MW',font:{family:MONO,size:10}},grid:{color:'#141B2D'}}}}});
+})();
+
+/* ============ drivers ============ */
+(function(){
+  const nice = {lag_24h:'Load 24h ago', lag_168h:'Load last week', roll_mean_24h:'24h rolling mean',
+    temp_c:'Temperature', humidity:'Humidity', cooling_dh:'Cooling degree-hrs', heating_dh:'Heating degree-hrs',
+    temp_x_humidity:'Temp × humidity', hour_sin:'Hour (sin)', hour_cos:'Hour (cos)', month_sin:'Month (sin)',
+    month_cos:'Month (cos)', dayofweek:'Day of week', is_weekend:'Weekend', is_holiday:'Public holiday',
+    wind_kmh:'Wind speed', rain:'Rain', fog:'Fog'};
+  const imp = DATA.importance.slice(0,10);
+  new Chart($('impChart'), {type:'bar',
+    data:{labels:imp.map(d=>nice[d.feature]||d.feature),
+      datasets:[{data:imp.map(d=>d.importance), backgroundColor:'rgba(255,180,84,.75)', borderRadius:2}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'#141B2D'}}, y:{grid:{display:false},ticks:{font:{family:"'Space Grotesk'",size:11.5},color:'#8C96AE'}}}}});
+
+  new Chart($('tempChart'), {type:'line',
+    data:{labels:DATA.temp_curve.temp.map(t=>t+'°'),
+      datasets:[{data:DATA.temp_curve.load, borderColor:'#FF6A5E', borderWidth:2,
+        pointRadius:2.5, pointBackgroundColor:'#FF6A5E', tension:.35, fill:true,
+        backgroundColor:'rgba(255,106,94,.07)'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>` avg ${fmt(c.parsed.y)} MW`}}},
+      scales:{x:{grid:{display:false},title:{display:true,text:'temperature',font:{family:MONO,size:10}}},
+              y:{grid:{color:'#141B2D'},title:{display:true,text:'mean MW',font:{family:MONO,size:10}}}}}});
+})();
+
+/* ============ FORECAST LAB ============ */
+const fr = Math.fround;
+function treePredict(x){
+  let s = MODEL.base_score;
+  for(const t of MODEL.trees){
+    let i=0;
+    while(t.feat[i]!==-1){ i = fr(x[t.feat[i]]) < fr(t.thr[i]) ? t.left[i] : t.right[i]; }
+    s += t.leaf[i];
+  }
+  return s;
+}
+function featuresFor(date, hour, temp, hum){
+  const dow=(date.getDay()+6)%7;                  // JS Sun=0 -> Python Mon=0
+  const month=date.getMonth()+1;
+  const iso=date.toISOString().slice(0,10);
+  const f={};
+  f.hour_sin=Math.sin(2*Math.PI*hour/24); f.hour_cos=Math.cos(2*Math.PI*hour/24);
+  f.month_sin=Math.sin(2*Math.PI*month/12); f.month_cos=Math.cos(2*Math.PI*month/12);
+  f.dayofweek=dow; f.is_weekend=dow>=5?1:0; f.is_holiday=holidaySet.has(iso)?1:0;
+  f.temp_c=temp; f.humidity=hum;
+  f.cooling_dh=Math.max(temp-24,0); f.heating_dh=Math.max(18-temp,0);
+  f.temp_x_humidity=temp*hum/100;
+  return MODEL.features.map(k=>f[k]);
+}
+function clim(month,hour){ return DATA.climatology[month+'-'+hour] || [25,55]; }
+
+const fDate=$('fDate'), fHour=$('fHour'), fTemp=$('fTemp'), fHum=$('fHum'), fGrow=$('fGrow');
+const today=new Date(); fDate.value=today.toISOString().slice(0,10);
+fDate.min='2010-01-01'; fDate.max='2035-12-31';
+
+function paintRange(el){ const p=(el.value-el.min)/(el.max-el.min)*100; el.style.setProperty('--fill',p+'%'); }
+function setWeatherFromClimatology(){
+  const d=new Date(fDate.value||today), h=+fHour.value;
+  const [t,m]=clim(d.getMonth()+1,h);
+  fTemp.value=t; fHum.value=m;
+}
+let dayChart;
+function update(){
+  const d=new Date(fDate.value||today);
+  const h=+fHour.value, temp=+fTemp.value, hum=+fHum.value, g=+fGrow.value/100;
+  $('hourOut').textContent=String(h).padStart(2,'0')+':00';
+  $('tempOut').textContent=temp.toFixed(1)+' °C';
+  $('humOut').textContent=hum+' %';
+  $('growOut').textContent=(+fGrow.value).toFixed(1)+' %/yr';
+  $('dowOut').textContent=d.toLocaleDateString('en-IN',{weekday:'long'});
+  [fHour,fTemp,fHum,fGrow].forEach(paintRange);
+  const dow=(d.getDay()+6)%7, iso=d.toISOString().slice(0,10);
+  $('bWknd').classList.toggle('on',dow>=5);
+  $('bHol').classList.toggle('on',holidaySet.has(iso));
+
+  // growth multiplier anchored to the training era (≈2012)
+  const yearFrac = d.getFullYear() + d.getMonth()/12;
+  const mult = Math.pow(1+g, Math.max(0, yearFrac-2012));
+
+  const mw = treePredict(featuresFor(d,h,temp,hum))*mult;
+  $('fOut').textContent = fmt(mw);
+
+  // context vs climatology-typical for the same hour
+  const [ct,cm]=clim(d.getMonth()+1,h);
+  const typical = treePredict(featuresFor(d,h,ct,cm))*mult;
+  const diff=(mw-typical)/typical*100;
+  $('fCtx').innerHTML = `vs a typical ${d.toLocaleDateString('en-IN',{month:'long'})} ${String(h).padStart(2,'0')}:00
+    at ${ct}°C: <b>${diff>=0?'+':''}${diff.toFixed(1)}%</b> · band ±5% ⇒ ${fmt(mw*0.95)}–${fmt(mw*1.05)} MW`;
+
+  // full-day curve: climatology weather shifted by the user's offset at the chosen hour
+  const dT=temp-ct, dH=hum-cm;
+  const curve=[], labels=[];
+  for(let k=0;k<24;k++){
+    const [t2,m2]=clim(d.getMonth()+1,k);
+    curve.push(treePredict(featuresFor(d,k,t2+dT,Math.min(100,Math.max(5,m2+dH))))*mult);
+    labels.push(String(k).padStart(2,'0'));
+  }
+  const colors = labels.map((_,k)=> k===h ? '#FFB454' : 'rgba(79,216,235,.35)');
+  if(dayChart){ dayChart.data.labels=labels;
+    dayChart.data.datasets[0].data=curve; dayChart.data.datasets[0].backgroundColor=colors; dayChart.update('none'); }
+  else dayChart=new Chart($('dayChart'),{type:'bar',
+    data:{labels,datasets:[{data:curve,backgroundColor:colors,borderRadius:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{title:i=>i[0].label+':00', label:c=>` ${fmt(c.parsed.y)} MW`}}},
+      scales:{x:{grid:{display:false},ticks:{maxTicksLimit:12}},
+              y:{grid:{color:'#141B2D'},title:{display:true,text:'MW',font:{family:MONO,size:10}}}}}});
+}
+fDate.addEventListener('change',()=>{ setWeatherFromClimatology(); update(); });
+fHour.addEventListener('input',()=>{ setWeatherFromClimatology(); update(); });
+fTemp.addEventListener('input',update);
+fHum.addEventListener('input',update);
+fGrow.addEventListener('input',update);
+$('resetWx').onclick=()=>{ setWeatherFromClimatology(); update(); };
+setWeatherFromClimatology(); update();
+</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+[
+  {
+    "feature": "hour_sin",
+    "importance": 0.097
+  },
+  {
+    "feature": "lag_168h",
+    "importance": 0.0954
+  },
+  {
+    "feature": "is_weekend",
+    "importance": 0.0915
+  },
+  {
+    "feature": "hour_cos",
+    "importance": 0.0816
+  },
+  {
+    "feature": "roll_mean_24h",
+    "importance": 0.0792
+  },
+  {
+    "feature": "lag_24h",
+    "importance": 0.0696
+  },
+  {
+    "feature": "month_cos",
+    "importance": 0.0569
+  },
+  {
+    "feature": "temp_c",
+    "importance": 0.0565
+  },
+  {
+    "feature": "dayofweek",
+    "importance": 0.054
+  },
+  {
+    "feature": "cooling_dh",
+    "importance": 0.0532
+  },
+  {
+    "feature": "is_holiday",
+    "importance": 0.0412
+  },
+  {
+    "feature": "heating_dh",
+    "importance": 0.0373
+  },
+  {
+    "feature": "month_sin",
+    "importance": 0.0351
+  },
+  {
+    "feature": "rain",
+    "importance": 0.0342
+  },
+  {
+    "feature": "temp_x_humidity",
+    "importance": 0.0322
+  },
+  {
+    "feature": "humidity",
+    "importance": 0.0293
+  },
+  {
+    "feature": "wind_kmh",
+    "importance": 0.0287
+  },
+  {
+    "feature": "fog",
+    "importance": 0.0272
+  }
+]
